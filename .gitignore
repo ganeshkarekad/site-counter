@@ -1,0 +1,41 @@
+# Claude Code files
+.claude/
+.claude.md
+CLAUDE.md
+
+# Development files
+generate-icons.html
+generate-better-icons.html
+generate-icons.js
+create-png-icons.js
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Logs
+*.log
+logs/
