@@ -2,7 +2,6 @@ let refreshInterval;
 let lastRefreshTime = 0;
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Site Tracker extension installed');
   refreshVisitData();
   startAutoRefresh();
 });
@@ -25,7 +24,6 @@ async function refreshVisitData() {
   const startTime = Date.now();
   
   if (startTime - lastRefreshTime < 5000) {
-    console.log('Rate limiting: too frequent refresh attempts');
     return;
   }
   
@@ -90,8 +88,6 @@ async function refreshVisitData() {
       action: 'dataRefreshed',
       timestamp: Date.now()
     }).catch(() => {});
-    
-    console.log('Visit data refreshed successfully');
   } catch (error) {
     console.error('Error refreshing visit data:', error);
   }
@@ -101,7 +97,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'settingsUpdated') {
     // Settings were updated in popup, no need to do anything special here
     // The content script will check settings when showing popups
-    console.log('Settings updated:', request.settings);
     sendResponse({ success: true });
     return true;
   } else if (request.action === 'refreshData') {
@@ -171,30 +166,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Track the last URL for each tab to detect actual navigation
+// Track the last URL and navigation state for each tab
 const tabUrls = {};
+const tabNavigationState = {};
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Only proceed if the URL has changed and the page is complete
-  if (changeInfo.status === 'complete' && tab.url) {
+  // Only proceed for actual navigation changes
+  if (changeInfo.url || (changeInfo.status === 'loading' && tab.url)) {
     try {
       const url = new URL(tab.url);
       
-      // Check if this is an actual navigation (URL changed)
+      // Check if this is an actual URL change (not just status change)
       const lastUrl = tabUrls[tabId];
       if (lastUrl === tab.url) {
-        // Same URL, likely an XHR request or refresh, don't show popup
         return;
       }
       
-      // Update the stored URL for this tab
-      tabUrls[tabId] = tab.url;
+      // Mark as navigating when URL changes or loading starts
+      if (changeInfo.url || changeInfo.status === 'loading') {
+        tabNavigationState[tabId] = true;
+        tabUrls[tabId] = tab.url;
+      }
       
-      // Only show popup for http/https pages
-      if (url.protocol === 'http:' || url.protocol === 'https:') {
-        chrome.tabs.sendMessage(tabId, {
-          action: 'showVisitPopup'
-        }).catch(() => {});
+      // Only trigger popup when navigation completes
+      if (changeInfo.status === 'complete' && tabNavigationState[tabId]) {
+        tabNavigationState[tabId] = false;
+        
+        // Only show popup for http/https pages
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          // Add small delay to ensure page is fully loaded
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tabId, {
+              action: 'showVisitPopup'
+            }).catch(() => {});
+          }, 1000);
+        }
       }
     } catch (e) {
       console.error('Invalid URL:', tab.url);
@@ -202,7 +208,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// Clean up stored URLs when tabs are closed
+// Clean up stored URLs and navigation state when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabUrls[tabId];
+  delete tabNavigationState[tabId];
 });

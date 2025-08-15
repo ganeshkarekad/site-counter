@@ -282,7 +282,6 @@ async function loadSettings() {
 async function saveSettings() {
   try {
     await chrome.storage.local.set({ settings });
-    console.log('Settings saved:', settings);
   } catch (error) {
     console.error('Error saving settings:', error);
   }

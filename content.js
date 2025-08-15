@@ -11,8 +11,11 @@
 
   let popupElement = null;
   let hideTimeout = null;
-  let lastDomain = sessionStorage.getItem('siteTrackerLastDomain');
   let currentDomain = window.location.hostname.replace(/^www\./, '');
+  
+  // Timer constants
+  const POPUP_COOLDOWN_SECONDS = 300; // 5 minutes
+  const DOMAIN_TIMESTAMP_KEY = 'siteTrackerDomainTimestamps';
 
   function createPopup(data) {
     if (popupElement) {
@@ -79,31 +82,64 @@
     }, 300);
   }
 
-  function showVisitPopup(forceShow = false) {
-    // Don't show popup if we're on the same domain (unless forced)
-    if (!forceShow && lastDomain === currentDomain) {
+  async function canShowPopupForDomain(domain) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([DOMAIN_TIMESTAMP_KEY], (result) => {
+        const timestamps = result[DOMAIN_TIMESTAMP_KEY] || {};
+        const now = Date.now();
+        const lastShown = timestamps[domain] || 0;
+        const timeDiff = (now - lastShown) / 1000; // Convert to seconds
+        
+        resolve(timeDiff >= POPUP_COOLDOWN_SECONDS);
+      });
+    });
+  }
+
+  async function updateDomainTimestamp(domain) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([DOMAIN_TIMESTAMP_KEY], (result) => {
+        const timestamps = result[DOMAIN_TIMESTAMP_KEY] || {};
+        const now = Date.now();
+        timestamps[domain] = now;
+        
+        // Cleanup old timestamps (older than 24 hours)
+        const cutoffTime = now - (24 * 60 * 60 * 1000);
+        Object.keys(timestamps).forEach(key => {
+          if (timestamps[key] < cutoffTime) {
+            delete timestamps[key];
+          }
+        });
+        
+        chrome.storage.local.set({ [DOMAIN_TIMESTAMP_KEY]: timestamps }, () => {
+          resolve();
+        });
+      });
+    });
+  }
+
+  async function showVisitPopup(forceShow = false) {
+    // Check if we can show popup for this domain (timer-based check)
+    const canShow = await canShowPopupForDomain(currentDomain);
+    if (!forceShow && !canShow) {
       return;
     }
     
     // Check if notifications are enabled
-    chrome.storage.local.get(['settings'], (result) => {
+    chrome.storage.local.get(['settings'], async (result) => {
       const settings = result.settings || { showNotifications: true };
       
       if (!settings.showNotifications) {
-        // Update domain tracking even if not showing popup
-        sessionStorage.setItem('siteTrackerLastDomain', currentDomain);
         return;
       }
-      
-      // Update the last domain
-      sessionStorage.setItem('siteTrackerLastDomain', currentDomain);
       
       chrome.runtime.sendMessage({
         action: 'getCurrentSiteData',
         domain: currentDomain
-      }, response => {
+      }, async (response) => {
         if (response && response.success && response.data) {
           if (response.data.todayVisits > 0 || response.data.totalVisits > 0) {
+            // Update timestamp to prevent showing again for 300 seconds
+            await updateDomainTimestamp(currentDomain);
             createPopup(response.data);
           }
         }
@@ -113,25 +149,17 @@
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'showVisitPopup') {
-      // This is triggered from background.js on tab update, check if it's a new domain
-      setTimeout(() => {
-        showVisitPopup(true); // Force show when triggered by tab update
-      }, 1000);
+      // This is triggered from background.js on actual navigation
+      showVisitPopup(false); // Use timer-based logic, don't force
     }
   });
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      // Don't show on visibility change if same domain
-      showVisitPopup(false);
-    }
-  });
-
+  // Only show popup on initial page load, not on visibility changes
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => showVisitPopup(false), 1000);
+      setTimeout(() => showVisitPopup(false), 1500);
     });
   } else {
-    setTimeout(() => showVisitPopup(false), 1000);
+    setTimeout(() => showVisitPopup(false), 1500);
   }
 })();
