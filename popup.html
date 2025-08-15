@@ -42,6 +42,31 @@
     
     <div class="top-sites-list" id="topSitesList"></div>
     
+    <div class="settings-section">
+      <div class="settings-header">
+        <h3 class="settings-title">Settings</h3>
+        <button id="settingsToggle" class="settings-toggle" aria-label="Toggle settings">
+          <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m16.24-7.76l-4.24 4.24m-5.66 0L2.76 7.76m16.24 9.48l-4.24-4.24m-5.66 0L2.76 16.24"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div id="settingsContent" class="settings-content">
+        <div class="setting-item">
+          <div class="setting-info">
+            <label class="setting-label" for="notificationToggle">Show Visit Notifications</label>
+            <span class="setting-description">Display popup when visiting new sites</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notificationToggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
     <footer class="popup-footer">
       <div class="last-refresh">
         Last refresh: <span id="lastRefreshTime">Never</span>

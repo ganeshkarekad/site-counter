@@ -1,8 +1,12 @@
 let visitData = {};
 let currentPeriod = 'today';
 let chartInstance = null;
+let settings = {
+  showNotifications: true
+};
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
   loadVisitData();
   setupEventListeners();
   setupMessageListener();
@@ -11,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   document.getElementById('refreshBtn').addEventListener('click', handleRefresh);
   document.getElementById('clearDataBtn').addEventListener('click', handleClearData);
+  document.getElementById('settingsToggle').addEventListener('click', toggleSettings);
+  document.getElementById('notificationToggle').addEventListener('change', handleNotificationToggle);
   
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -256,4 +262,47 @@ function updateTopSitesList(topSites) {
       <span class="site-count">${count.toLocaleString()}</span>
     </div>
   `).join('');
+}
+
+async function loadSettings() {
+  try {
+    const result = await chrome.storage.local.get(['settings']);
+    if (result.settings) {
+      settings = { ...settings, ...result.settings };
+    }
+    
+    // Update UI to reflect loaded settings
+    const notificationToggle = document.getElementById('notificationToggle');
+    notificationToggle.checked = settings.showNotifications;
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+}
+
+async function saveSettings() {
+  try {
+    await chrome.storage.local.set({ settings });
+    console.log('Settings saved:', settings);
+  } catch (error) {
+    console.error('Error saving settings:', error);
+  }
+}
+
+function toggleSettings() {
+  const settingsContent = document.getElementById('settingsContent');
+  const settingsToggle = document.getElementById('settingsToggle');
+  
+  settingsContent.classList.toggle('settings-expanded');
+  settingsToggle.classList.toggle('settings-active');
+}
+
+async function handleNotificationToggle(event) {
+  settings.showNotifications = event.target.checked;
+  await saveSettings();
+  
+  // Notify background script of settings change
+  chrome.runtime.sendMessage({
+    action: 'settingsUpdated',
+    settings: settings
+  });
 }

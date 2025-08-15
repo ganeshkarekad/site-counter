@@ -85,18 +85,29 @@
       return;
     }
     
-    // Update the last domain
-    sessionStorage.setItem('siteTrackerLastDomain', currentDomain);
-    
-    chrome.runtime.sendMessage({
-      action: 'getCurrentSiteData',
-      domain: currentDomain
-    }, response => {
-      if (response && response.success && response.data) {
-        if (response.data.todayVisits > 0 || response.data.totalVisits > 0) {
-          createPopup(response.data);
-        }
+    // Check if notifications are enabled
+    chrome.storage.local.get(['settings'], (result) => {
+      const settings = result.settings || { showNotifications: true };
+      
+      if (!settings.showNotifications) {
+        // Update domain tracking even if not showing popup
+        sessionStorage.setItem('siteTrackerLastDomain', currentDomain);
+        return;
       }
+      
+      // Update the last domain
+      sessionStorage.setItem('siteTrackerLastDomain', currentDomain);
+      
+      chrome.runtime.sendMessage({
+        action: 'getCurrentSiteData',
+        domain: currentDomain
+      }, response => {
+        if (response && response.success && response.data) {
+          if (response.data.todayVisits > 0 || response.data.totalVisits > 0) {
+            createPopup(response.data);
+          }
+        }
+      });
     });
   }
 

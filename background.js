@@ -98,7 +98,13 @@ async function refreshVisitData() {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'refreshData') {
+  if (request.action === 'settingsUpdated') {
+    // Settings were updated in popup, no need to do anything special here
+    // The content script will check settings when showing popups
+    console.log('Settings updated:', request.settings);
+    sendResponse({ success: true });
+    return true;
+  } else if (request.action === 'refreshData') {
     refreshVisitData().then(() => {
       sendResponse({ success: true });
     }).catch(error => {
