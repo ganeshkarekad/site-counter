@@ -5,7 +5,8 @@
   z-index: 2147483647;
   background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.15);
+  border: 1px solid #a7f3d0;
   opacity: 0;
   transform: translateY(20px) scale(0.95);
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -27,23 +28,26 @@
 
 .st-popup-header {
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #a7f3d0;
+  background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
 }
 
 .st-popup-title {
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: #0f766e;
 }
 
 .st-popup-close {
   background: none;
   border: none;
   font-size: 18px;
-  color: #9ca3af;
+  color: #14b8a6;
   cursor: pointer;
   padding: 0;
   width: 20px;
@@ -56,8 +60,8 @@
 }
 
 .st-popup-close:hover {
-  background-color: #f3f4f6;
-  color: #4b5563;
+  background-color: #ccfbf1;
+  color: #0f766e;
 }
 
 .st-popup-body {
@@ -68,20 +72,20 @@
 .st-visit-count {
   font-size: 32px;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f766e;
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .st-visit-label {
   font-size: 11px;
-  color: #6b7280;
+  color: #14b8a6;
   margin-bottom: 8px;
 }
 
 .st-total-count {
   font-size: 11px;
-  color: #9ca3af;
+  color: #14b8a6;
   padding-top: 8px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid #a7f3d0;
 }

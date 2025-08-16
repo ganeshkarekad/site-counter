@@ -1,6 +1,6 @@
 // Custom visit tracking system
 const visitSessions = {};
-const visitData = {};
+let visitData = {};  // Changed from const to let for proper reassignment
 const activeVisits = {};
 
 // Navigation state tracking
@@ -11,12 +11,18 @@ const tabUrls = {};
 const MIN_VISIT_DURATION = 1000; // Minimum 1 second to count as a visit
 const IDLE_TIMEOUT = 30000; // 30 seconds of inactivity ends a visit
 
+// Data persistence flag to prevent concurrent saves
+let isSaving = false;
+let saveQueue = false;
+
 // Initialize on install/startup
 chrome.runtime.onInstalled.addListener(() => {
+  console.log('Extension installed/updated, loading data...');
   loadVisitData();
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  console.log('Extension started, loading data...');
   loadVisitData();
 });
 
@@ -24,26 +30,54 @@ chrome.runtime.onStartup.addListener(() => {
 async function loadVisitData() {
   try {
     const result = await chrome.storage.local.get(['customVisitData']);
-    if (result.customVisitData) {
-      Object.assign(visitData, result.customVisitData);
+    if (result.customVisitData && Object.keys(result.customVisitData).length > 0) {
+      // Deep clone to avoid reference issues
+      visitData = JSON.parse(JSON.stringify(result.customVisitData));
+      console.log('Loaded visit data for', Object.keys(visitData).length, 'domains');
+    } else {
+      console.log('No existing visit data found, starting fresh');
+      visitData = {};
     }
   } catch (error) {
     console.error('Error loading visit data:', error);
+    // Don't reset visitData on error, keep what we have in memory
   }
 }
 
-// Save visit data to storage
+// Save visit data to storage with queue mechanism
 async function saveVisitData() {
+  // If already saving, queue another save for after
+  if (isSaving) {
+    saveQueue = true;
+    return;
+  }
+
+  isSaving = true;
+  
   try {
-    await chrome.storage.local.set({ customVisitData: visitData });
+    // Create a deep copy to avoid modification during save
+    const dataToSave = JSON.parse(JSON.stringify(visitData));
+    
+    await chrome.storage.local.set({ customVisitData: dataToSave });
+    console.log('Saved visit data for', Object.keys(dataToSave).length, 'domains');
     
     // Notify popup if open
     chrome.runtime.sendMessage({ 
       action: 'dataRefreshed',
       timestamp: Date.now()
     }).catch(() => {});
+    
   } catch (error) {
     console.error('Error saving visit data:', error);
+    // Keep data in memory even if save fails
+  } finally {
+    isSaving = false;
+    
+    // If there was a queued save, execute it now
+    if (saveQueue) {
+      saveQueue = false;
+      setTimeout(() => saveVisitData(), 100);
+    }
   }
 }
 
@@ -121,6 +155,19 @@ function endVisit(tabId, timestamp = Date.now()) {
   // Only record time if visit was longer than minimum
   if (session.duration >= MIN_VISIT_DURATION) {
     const domain = session.domain;
+    
+    // Make sure domain data still exists
+    if (!visitData[domain]) {
+      visitData[domain] = {
+        totalVisits: 0,
+        totalTime: 0,
+        dailyVisits: {},
+        dailyTime: {},
+        lastVisit: 0,
+        sessions: []
+      };
+    }
+    
     const today = new Date(session.startTime).toDateString();
     
     // Update time spent
@@ -157,16 +204,20 @@ function pauseVisit(tabId) {
     
     // Update time spent so far
     const domain = session.domain;
-    const today = new Date(session.startTime).toDateString();
     
-    visitData[domain].totalTime += duration;
-    visitData[domain].dailyTime[today] = (visitData[domain].dailyTime[today] || 0) + duration;
-    
-    // Mark as paused
-    session.isActive = false;
-    session.pausedAt = now;
-    
-    saveVisitData();
+    // Make sure domain data exists
+    if (visitData[domain]) {
+      const today = new Date(session.startTime).toDateString();
+      
+      visitData[domain].totalTime += duration;
+      visitData[domain].dailyTime[today] = (visitData[domain].dailyTime[today] || 0) + duration;
+      
+      // Mark as paused
+      session.isActive = false;
+      session.pausedAt = now;
+      
+      saveVisitData();
+    }
   }
 }
 
@@ -333,15 +384,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'getVisitData') {
-    // Return visit data for popup
-    chrome.storage.local.get(['customVisitData', 'settings']).then(result => {
-      sendResponse({
-        success: true,
-        data: result.customVisitData || {},
-        lastRefresh: Date.now()
-      });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
+    // Return visit data for popup - make sure we have the latest
+    sendResponse({
+      success: true,
+      data: visitData || {},
+      lastRefresh: Date.now()
     });
     return true;
   }
@@ -357,11 +404,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'clearAllData') {
-    // Clear all custom visit data
-    Object.keys(visitData).forEach(key => delete visitData[key]);
+    // Clear all custom visit data - user explicitly requested this
+    visitData = {};  // Reset to empty object, not delete properties
     Object.keys(activeVisits).forEach(key => delete activeVisits[key]);
     
     chrome.storage.local.remove(['customVisitData']).then(() => {
+      console.log('User cleared all data');
       sendResponse({ success: true });
     }).catch(error => {
       sendResponse({ success: false, error: error.message });
@@ -376,25 +424,58 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Periodic cleanup of old data (keep only last 90 days)
+// Run less frequently to avoid issues
 setInterval(() => {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - 90);
-  const cutoffDateString = cutoffDate.toDateString();
   
-  Object.values(visitData).forEach(siteData => {
+  let cleaned = false;
+  
+  Object.keys(visitData).forEach(domain => {
+    const siteData = visitData[domain];
+    if (!siteData) return;
+    
     // Clean up old daily data
     Object.keys(siteData.dailyVisits || {}).forEach(dateKey => {
       if (new Date(dateKey) < cutoffDate) {
         delete siteData.dailyVisits[dateKey];
-        delete siteData.dailyTime[dateKey];
+        if (siteData.dailyTime) {
+          delete siteData.dailyTime[dateKey];
+        }
+        cleaned = true;
       }
     });
     
     // Clean up old sessions
-    if (siteData.sessions) {
+    if (siteData.sessions && Array.isArray(siteData.sessions)) {
+      const oldLength = siteData.sessions.length;
       siteData.sessions = siteData.sessions.filter(s => s.start > cutoffDate.getTime());
+      if (oldLength !== siteData.sessions.length) {
+        cleaned = true;
+      }
     }
   });
   
-  saveVisitData();
+  // Only save if we actually cleaned something
+  if (cleaned) {
+    console.log('Cleaned old data older than 90 days');
+    saveVisitData();
+  }
 }, 3600000); // Run every hour
+
+// Periodic save to ensure data persistence (every 5 minutes)
+setInterval(() => {
+  // Only save if there's active data
+  if (Object.keys(visitData).length > 0) {
+    console.log('Periodic save of visit data');
+    saveVisitData();
+  }
+}, 300000); // Every 5 minutes
+
+// Save data when extension might be unloading
+chrome.runtime.onSuspend?.addListener(() => {
+  console.log('Extension suspending, saving data...');
+  // Force synchronous-ish save before suspend
+  const dataToSave = JSON.parse(JSON.stringify(visitData));
+  chrome.storage.local.set({ customVisitData: dataToSave });
+});

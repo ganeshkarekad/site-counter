@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Foculatics Counter Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #1f2937;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 16px;
+    }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 25px;
+      margin: 40px 0;
+    }
+    .icon-card {
+      background: #f9fafb;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s ease;
+    }
+    .icon-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+      border-color: #3b82f6;
+    }
+    .icon-label {
+      font-size: 16px;
+      color: #374151;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .icon-size {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto 20px;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .download-btn {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    .download-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+    .download-all-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 700;
+      display: block;
+      margin: 40px auto 0;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    .download-all-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+    .instructions {
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .instructions h3 {
+      color: #1e40af;
+      margin-bottom: 12px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .instructions p {
+      color: #3730a3;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔢 Foculatics Counter Icon Generator</h1>
+    <p class="subtitle">Professional counter-themed icons for your analytics extension</p>
+    
+    <div class="instructions">
+      <h3>📋 Instructions</h3>
+      <p>• Click individual "Download" buttons to save each icon size</p>
+      <p>• Or click "Download All Icons" to get all sizes at once</p>
+      <p>• Save files in the <code>/icons</code> directory with exact names shown</p>
+      <p>• These icons feature a digital counter theme perfect for analytics</p>
+    </div>
+    
+    <div class="canvas-grid">
+      <div class="icon-card">
+        <div class="icon-label">icon16.png</div>
+        <div class="icon-size">16×16 pixels</div>
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon16', 'icon16.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon32.png</div>
+        <div class="icon-size">32×32 pixels</div>
+        <canvas id="icon32" width="32" height="32"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon32', 'icon32.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon48.png</div>
+        <div class="icon-size">48×48 pixels</div>
+        <canvas id="icon48" width="48" height="48"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon48', 'icon48.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon128.png</div>
+        <div class="icon-size">128×128 pixels</div>
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon128', 'icon128.png')">Download</button>
+      </div>
+    </div>
+    
+    <button class="download-all-btn" onclick="downloadAll()">📥 Download All Icons</button>
+  </div>
+
+  <script>
+    function drawCounterIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // Set actual size
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Background with rounded corners
+      const radius = size * 0.15;
+      ctx.fillStyle = '#1f2937'; // Dark gray background
+      
+      // Draw rounded rectangle background
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw digital counter display (LCD style)
+      const displayMargin = size * 0.15;
+      const displayWidth = size - (displayMargin * 2);
+      const displayHeight = size * 0.4;
+      const displayY = size * 0.2;
+      
+      // LCD display background
+      ctx.fillStyle = '#065f46'; // Dark green LCD background
+      ctx.beginPath();
+      ctx.roundRect(displayMargin, displayY, displayWidth, displayHeight, size * 0.08);
+      ctx.fill();
+      
+      // LCD display border
+      ctx.strokeStyle = '#047857';
+      ctx.lineWidth = size * 0.02;
+      ctx.stroke();
+      
+      // Draw counter numbers (showing count like "123")
+      ctx.fillStyle = '#10b981'; // Bright green LCD text
+      ctx.font = `${size * 0.25}px "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const counterText = size <= 16 ? '12' : size <= 32 ? '123' : '1234';
+      ctx.fillText(counterText, size / 2, displayY + displayHeight / 2);
+      
+      // Draw small incremental marks or tally marks below
+      if (size >= 32) {
+        const markY = size * 0.7;
+        const markSpacing = size * 0.15;
+        const markHeight = size * 0.12;
+        const startX = size * 0.3;
+        
+        ctx.fillStyle = '#3b82f6'; // Blue accent color
+        ctx.lineWidth = size * 0.03;
+        
+        // Draw 3-4 small vertical marks representing counts
+        const markCount = size >= 48 ? 4 : 3;
+        for (let i = 0; i < markCount; i++) {
+          const x = startX + (i * markSpacing);
+          ctx.fillRect(x - ctx.lineWidth/2, markY, ctx.lineWidth, markHeight);
+        }
+      }
+      
+      // Add small "analytics" dots for larger icons
+      if (size >= 48) {
+        ctx.fillStyle = '#6366f1';
+        const dotSize = size * 0.03;
+        const dotPositions = [
+          [size * 0.8, size * 0.2],
+          [size * 0.85, size * 0.25],
+          [size * 0.9, size * 0.3]
+        ];
+        
+        dotPositions.forEach(([x, y]) => {
+          ctx.beginPath();
+          ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+    }
+    
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+    
+    function downloadAll() {
+      const icons = [
+        { id: 'icon16', name: 'icon16.png' },
+        { id: 'icon32', name: 'icon32.png' },
+        { id: 'icon48', name: 'icon48.png' },
+        { id: 'icon128', name: 'icon128.png' }
+      ];
+      
+      let index = 0;
+      function downloadNext() {
+        if (index < icons.length) {
+          downloadIcon(icons[index].id, icons[index].name);
+          index++;
+          setTimeout(downloadNext, 800);
+        }
+      }
+      downloadNext();
+    }
+    
+    // Generate all icons on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawCounterIcon('icon16', 16);
+      drawCounterIcon('icon32', 32);
+      drawCounterIcon('icon48', 48);
+      drawCounterIcon('icon128', 128);
+    });
+  </script>
+</body>
+</html>

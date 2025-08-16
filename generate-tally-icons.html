@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Foculatics Tally Counter Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #99f2c8 0%, #1f4037 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #0f766e;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #14b8a6;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 16px;
+    }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 25px;
+      margin: 40px 0;
+    }
+    .icon-card {
+      background: #f0fdfa;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px solid #5eead4;
+      transition: all 0.3s ease;
+    }
+    .icon-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(20, 184, 166, 0.2);
+      border-color: #14b8a6;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto 20px;
+      border: 1px solid #a7f3d0;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .download-btn {
+      background: linear-gradient(135deg, #14b8a6, #0f766e);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+    .download-btn:hover {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+    }
+    .download-all-btn {
+      background: linear-gradient(135deg, #14b8a6, #0f766e);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 700;
+      display: block;
+      margin: 40px auto 0;
+      box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    }
+    .download-all-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+    }
+    .instructions {
+      background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+      border: 1px solid #5eead4;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .instructions h3 {
+      color: #0f766e;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .instructions p {
+      color: #047857;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔢 Foculatics Tally Counter Icons</h1>
+    <p class="subtitle">Teal-themed tally counter design for all icon sizes</p>
+    
+    <div class="instructions">
+      <h3>📋 Icon Generation</h3>
+      <p>• Based on your tally counter design with teal/mint colors</p>
+      <p>• Five tally marks with the fifth crossing the first four</p>
+      <p>• Click "Download All Icons" to get the complete set</p>
+      <p>• Replace files in <code>/icons</code> directory</p>
+    </div>
+    
+    <div class="canvas-grid">
+      <div class="icon-card">
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon16', 'icon16.png')">Download 16x16</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon32" width="32" height="32"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon32', 'icon32.png')">Download 32x32</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon48" width="48" height="48"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon48', 'icon48.png')">Download 48x48</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon128', 'icon128.png')">Download 128x128</button>
+      </div>
+    </div>
+    
+    <button class="download-all-btn" onclick="downloadAll()">📥 Download All Icons</button>
+  </div>
+
+  <script>
+    function drawTallyIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Enable anti-aliasing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Draw circular background
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const radius = size / 2 - 1;
+      
+      // Outer border (teal)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f766e';
+      ctx.fill();
+      
+      // Inner circle (mint green)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius - size * 0.08, 0, Math.PI * 2);
+      ctx.fillStyle = '#a7f3d0';
+      ctx.fill();
+      
+      // Draw tally marks
+      ctx.strokeStyle = '#0f766e';
+      ctx.lineCap = 'round';
+      
+      // Adjust tally marks based on size
+      let lineWidth, startX, startY, endY, spacing, diagonalOffset;
+      
+      if (size <= 16) {
+        lineWidth = 1.5;
+        startX = size * 0.25;
+        startY = size * 0.3;
+        endY = size * 0.7;
+        spacing = size * 0.12;
+        diagonalOffset = size * 0.35;
+      } else if (size <= 32) {
+        lineWidth = size * 0.06;
+        startX = size * 0.22;
+        startY = size * 0.25;
+        endY = size * 0.75;
+        spacing = size * 0.13;
+        diagonalOffset = size * 0.4;
+      } else if (size <= 48) {
+        lineWidth = size * 0.05;
+        startX = size * 0.2;
+        startY = size * 0.25;
+        endY = size * 0.75;
+        spacing = size * 0.14;
+        diagonalOffset = size * 0.45;
+      } else {
+        lineWidth = size * 0.04;
+        startX = size * 0.18;
+        startY = size * 0.22;
+        endY = size * 0.78;
+        spacing = size * 0.15;
+        diagonalOffset = size * 0.5;
+      }
+      
+      ctx.lineWidth = lineWidth;
+      
+      // Draw four vertical tally marks
+      for (let i = 0; i < 4; i++) {
+        const x = startX + (i * spacing);
+        ctx.beginPath();
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+        ctx.stroke();
+      }
+      
+      // Draw diagonal fifth tally mark crossing the first four
+      ctx.beginPath();
+      ctx.moveTo(startX - spacing * 0.3, startY + size * 0.15);
+      ctx.lineTo(startX + (3 * spacing) + spacing * 0.3, endY - size * 0.15);
+      ctx.stroke();
+    }
+    
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+    
+    function downloadAll() {
+      const icons = [
+        { id: 'icon16', name: 'icon16.png' },
+        { id: 'icon32', name: 'icon32.png' },
+        { id: 'icon48', name: 'icon48.png' },
+        { id: 'icon128', name: 'icon128.png' }
+      ];
+      
+      let index = 0;
+      function downloadNext() {
+        if (index < icons.length) {
+          downloadIcon(icons[index].id, icons[index].name);
+          index++;
+          setTimeout(downloadNext, 800);
+        }
+      }
+      downloadNext();
+    }
+    
+    // Generate all icons on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawTallyIcon('icon16', 16);
+      drawTallyIcon('icon32', 32);
+      drawTallyIcon('icon48', 48);
+      drawTallyIcon('icon128', 128);
+    });
+  </script>
+</body>
+</html>

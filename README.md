@@ -1,6 +1,6 @@
-# Site Tracker - Chrome Extension
+# Foculatics: Site Counter - Chrome Extension
 
-A Chrome extension that tracks website visit counts with real-time statistics and historical data visualization.
+A precision analytics Chrome extension that tracks website visit counts with real-time statistics and beautiful data visualization to help you monitor your browsing habits.
 
 ## Features
 
@@ -85,7 +85,7 @@ The extension requires the following permissions:
 To modify the extension:
 1. Make changes to the source files
 2. Go to `chrome://extensions/`
-3. Click the refresh button on the Site Tracker extension card
+3. Click the refresh button on the Foculatics extension card
 4. Test your changes
 
 ## Icon Generation

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Foculatics Counter Icon Generator V2</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #1f2937;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 16px;
+    }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 25px;
+      margin: 40px 0;
+    }
+    .icon-card {
+      background: #f9fafb;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s ease;
+    }
+    .icon-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+      border-color: #6366f1;
+    }
+    .icon-label {
+      font-size: 16px;
+      color: #374151;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .icon-size {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto 20px;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .download-btn {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+    .download-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+    .download-all-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 700;
+      display: block;
+      margin: 40px auto 0;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    .download-all-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+    .instructions {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border: 1px solid #bae6fd;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .instructions h3 {
+      color: #0369a1;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .instructions p {
+      color: #0c4a6e;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+    code {
+      background: #fef3c7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔢 Foculatics Counter Icons V2</h1>
+    <p class="subtitle">Modern counter design with digital display aesthetic</p>
+    
+    <div class="instructions">
+      <h3>📋 How to Use</h3>
+      <p>• These icons feature a modern counter/odometer design</p>
+      <p>• Click "Download" to save individual sizes</p>
+      <p>• Use "Download All Icons" to get the complete set</p>
+      <p>• Replace files in <code>/icons</code> directory</p>
+    </div>
+    
+    <div class="canvas-grid">
+      <div class="icon-card">
+        <div class="icon-label">icon16.png</div>
+        <div class="icon-size">16×16 pixels</div>
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon16', 'icon16.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon32.png</div>
+        <div class="icon-size">32×32 pixels</div>
+        <canvas id="icon32" width="32" height="32"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon32', 'icon32.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon48.png</div>
+        <div class="icon-size">48×48 pixels</div>
+        <canvas id="icon48" width="48" height="48"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon48', 'icon48.png')">Download</button>
+      </div>
+      
+      <div class="icon-card">
+        <div class="icon-label">icon128.png</div>
+        <div class="icon-size">128×128 pixels</div>
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon128', 'icon128.png')">Download</button>
+      </div>
+    </div>
+    
+    <button class="download-all-btn" onclick="downloadAll()">📥 Download All Icons</button>
+  </div>
+
+  <script>
+    function drawModernCounterIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // Set actual size
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Enable anti-aliasing for smooth edges
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Create gradient background
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#4f46e5'); // Indigo
+      gradient.addColorStop(1, '#6366f1'); // Lighter indigo
+      
+      // Draw rounded rectangle background
+      const radius = size * 0.2;
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw counter frame
+      const frameMargin = size * 0.15;
+      const frameWidth = size - (frameMargin * 2);
+      const frameHeight = size * 0.35;
+      const frameY = (size - frameHeight) / 2;
+      
+      // Counter background (dark)
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.9)'; // Dark slate
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = size * 0.02;
+      
+      // Draw counter window
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(frameMargin, frameY, frameWidth, frameHeight, size * 0.05);
+      } else {
+        // Fallback for browsers without roundRect
+        ctx.rect(frameMargin, frameY, frameWidth, frameHeight);
+      }
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw counter digits
+      ctx.fillStyle = '#10f99f'; // Bright green (digital display color)
+      ctx.shadowColor = '#10f99f';
+      ctx.shadowBlur = size * 0.08;
+      
+      // Choose font size and digits based on icon size
+      let fontSize, digits;
+      if (size <= 16) {
+        fontSize = size * 0.4;
+        digits = '42';
+      } else if (size <= 32) {
+        fontSize = size * 0.35;
+        digits = '123';
+      } else if (size <= 48) {
+        fontSize = size * 0.3;
+        digits = '456';
+      } else {
+        fontSize = size * 0.25;
+        digits = '7890';
+      }
+      
+      ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(digits, size / 2, frameY + frameHeight / 2);
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      
+      // Add decorative elements for larger sizes
+      if (size >= 48) {
+        // Add small indicator dots
+        ctx.fillStyle = '#fbbf24'; // Amber
+        const dotSize = size * 0.04;
+        const dotY = size * 0.8;
+        
+        // Draw three dots
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.arc(size / 2 + (i * size * 0.12), dotY, dotSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        // Add plus sign or increment indicator
+        if (size >= 128) {
+          ctx.strokeStyle = '#10b981'; // Green
+          ctx.lineWidth = size * 0.025;
+          ctx.lineCap = 'round';
+          
+          const plusSize = size * 0.08;
+          const plusX = size * 0.8;
+          const plusY = size * 0.2;
+          
+          // Draw plus sign
+          ctx.beginPath();
+          ctx.moveTo(plusX - plusSize/2, plusY);
+          ctx.lineTo(plusX + plusSize/2, plusY);
+          ctx.moveTo(plusX, plusY - plusSize/2);
+          ctx.lineTo(plusX, plusY + plusSize/2);
+          ctx.stroke();
+        }
+      }
+      
+      // Add subtle inner glow effect for polish
+      if (size >= 32) {
+        const glowGradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+        glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+        glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.fillRect(0, 0, size, size);
+      }
+    }
+    
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+    
+    function downloadAll() {
+      const icons = [
+        { id: 'icon16', name: 'icon16.png' },
+        { id: 'icon32', name: 'icon32.png' },
+        { id: 'icon48', name: 'icon48.png' },
+        { id: 'icon128', name: 'icon128.png' }
+      ];
+      
+      let index = 0;
+      function downloadNext() {
+        if (index < icons.length) {
+          downloadIcon(icons[index].id, icons[index].name);
+          index++;
+          setTimeout(downloadNext, 800);
+        }
+      }
+      downloadNext();
+    }
+    
+    // Generate all icons on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawModernCounterIcon('icon16', 16);
+      drawModernCounterIcon('icon32', 32);
+      drawModernCounterIcon('icon48', 48);
+      drawModernCounterIcon('icon128', 128);
+    });
+  </script>
+</body>
+</html>

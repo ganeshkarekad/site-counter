@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Foculatics Clean Counter Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #1f2937;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 16px;
+    }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 25px;
+      margin: 40px 0;
+    }
+    .icon-card {
+      background: #f9fafb;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s ease;
+    }
+    .icon-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+      border-color: #3b82f6;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .download-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+    .download-btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    .download-all-btn {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 700;
+      display: block;
+      margin: 40px auto 0;
+    }
+    .download-all-btn:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔢 Foculatics Clean Counter Icons</h1>
+    <p class="subtitle">Professional counter design with clean, modern aesthetics</p>
+    
+    <div class="canvas-grid">
+      <div class="icon-card">
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon16', 'icon16.png')">Download 16x16</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon32" width="32" height="32"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon32', 'icon32.png')">Download 32x32</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon48" width="48" height="48"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon48', 'icon48.png')">Download 48x48</button>
+      </div>
+      
+      <div class="icon-card">
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <button class="download-btn" onclick="downloadIcon('icon128', 'icon128.png')">Download 128x128</button>
+      </div>
+    </div>
+    
+    <button class="download-all-btn" onclick="downloadAll()">📥 Download All Icons</button>
+  </div>
+
+  <script>
+    function drawCleanCounterIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Enable anti-aliasing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      
+      // Clear canvas with white background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      
+      // Main background - dark slate gray
+      const radius = size * 0.18;
+      ctx.fillStyle = '#1e293b';
+      
+      // Draw rounded rectangle
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw counter frame (metallic silver look)
+      const frameMargin = size * 0.12;
+      const frameWidth = size - (frameMargin * 2);
+      const frameHeight = size * 0.45;
+      const frameY = (size - frameHeight) / 2;
+      
+      // Outer frame (silver/gray)
+      ctx.fillStyle = '#94a3b8';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = size * 0.02;
+      
+      // Counter window background
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(frameMargin, frameY, frameWidth, frameHeight, size * 0.06);
+      } else {
+        ctx.rect(frameMargin, frameY, frameWidth, frameHeight);
+      }
+      ctx.fill();
+      ctx.stroke();
+      
+      // Inner display area (black background for digits)
+      const displayMargin = size * 0.04;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(
+        frameMargin + displayMargin,
+        frameY + displayMargin,
+        frameWidth - (displayMargin * 2),
+        frameHeight - (displayMargin * 2)
+      );
+      
+      // Draw counter digits (white on black, like classic counter)
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+      ctx.shadowBlur = size * 0.02;
+      
+      // Select appropriate font size and digits
+      let fontSize, digits;
+      if (size <= 16) {
+        fontSize = size * 0.45;
+        digits = '99';
+      } else if (size <= 32) {
+        fontSize = size * 0.35;
+        digits = '456';
+      } else if (size <= 48) {
+        fontSize = size * 0.32;
+        digits = '1234';
+      } else {
+        fontSize = size * 0.28;
+        digits = '98765';
+      }
+      
+      // Use monospace font for authentic counter look
+      ctx.font = `bold ${fontSize}px "Monaco", "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(digits, size / 2, frameY + frameHeight / 2);
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      
+      // Add divider lines between digits for mechanical counter effect
+      if (size >= 32) {
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = size * 0.01;
+        
+        const digitWidth = frameWidth / (digits.length + 1);
+        for (let i = 1; i < digits.length; i++) {
+          const x = frameMargin + (digitWidth * i) + digitWidth/2;
+          ctx.beginPath();
+          ctx.moveTo(x, frameY + displayMargin);
+          ctx.lineTo(x, frameY + frameHeight - displayMargin);
+          ctx.stroke();
+        }
+      }
+      
+      // Add small increment/decrement buttons for larger sizes
+      if (size >= 48) {
+        // Plus button (top right)
+        const btnSize = size * 0.12;
+        const btnMargin = size * 0.08;
+        
+        // Plus button
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(size - btnMargin - btnSize/2, btnMargin + btnSize/2, btnSize/2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = size * 0.02;
+        ctx.lineCap = 'round';
+        
+        // Draw plus sign
+        const plusSize = btnSize * 0.5;
+        const plusX = size - btnMargin - btnSize/2;
+        const plusY = btnMargin + btnSize/2;
+        
+        ctx.beginPath();
+        ctx.moveTo(plusX - plusSize/2, plusY);
+        ctx.lineTo(plusX + plusSize/2, plusY);
+        ctx.moveTo(plusX, plusY - plusSize/2);
+        ctx.lineTo(plusX, plusY + plusSize/2);
+        ctx.stroke();
+        
+        // Minus button (bottom right)
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(size - btnMargin - btnSize/2, size - btnMargin - btnSize/2, btnSize/2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw minus sign
+        ctx.beginPath();
+        ctx.moveTo(plusX - plusSize/2, size - btnMargin - btnSize/2);
+        ctx.lineTo(plusX + plusSize/2, size - btnMargin - btnSize/2);
+        ctx.stroke();
+      }
+      
+      // Add subtle reflection effect for realism
+      if (size >= 32) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, size * 0.3);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(frameMargin, frameY, frameWidth, frameHeight * 0.3);
+      }
+    }
+    
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+    
+    function downloadAll() {
+      const icons = [
+        { id: 'icon16', name: 'icon16.png' },
+        { id: 'icon32', name: 'icon32.png' },
+        { id: 'icon48', name: 'icon48.png' },
+        { id: 'icon128', name: 'icon128.png' }
+      ];
+      
+      let index = 0;
+      function downloadNext() {
+        if (index < icons.length) {
+          downloadIcon(icons[index].id, icons[index].name);
+          index++;
+          setTimeout(downloadNext, 800);
+        }
+      }
+      downloadNext();
+    }
+    
+    // Generate all icons on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawCleanCounterIcon('icon16', 16);
+      drawCleanCounterIcon('icon32', 32);
+      drawCleanCounterIcon('icon48', 48);
+      drawCleanCounterIcon('icon128', 128);
+    });
+  </script>
+</body>
+</html>
