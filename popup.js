@@ -1,5 +1,6 @@
 let visitData = {};
 let currentPeriod = 'today';
+let currentSort = 'visits';
 let chartInstance = null;
 let settings = {
   showNotifications: true
@@ -17,6 +18,7 @@ function setupEventListeners() {
   document.getElementById('clearDataBtn').addEventListener('click', handleClearData);
   document.getElementById('settingsToggle').addEventListener('click', toggleSettings);
   document.getElementById('notificationToggle').addEventListener('change', handleNotificationToggle);
+  document.getElementById('sortSelect').addEventListener('change', handleSortChange);
   
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -34,6 +36,11 @@ function setupMessageListener() {
       loadVisitData();
     }
   });
+}
+
+function handleSortChange(event) {
+  currentSort = event.target.value;
+  updateDisplay();
 }
 
 // Format time duration
@@ -122,6 +129,7 @@ function filterDataByPeriod(data, period) {
   for (const [domain, siteData] of Object.entries(data)) {
     let count = 0;
     let timeSpent = 0;
+    let lastVisit = siteData.lastVisit || 0;
     
     if (period === 'all') {
       count = siteData.totalVisits || 0;
@@ -151,12 +159,29 @@ function filterDataByPeriod(data, period) {
           timeSpent += time;
         }
       }
+      
+      // For period filtering, find the most recent visit within the period
+      if (period !== 'all' && lastVisit) {
+        const lastVisitDate = new Date(lastVisit);
+        if (lastVisitDate < cutoffDate) {
+          // Find the most recent visit within the selected period
+          let mostRecentInPeriod = 0;
+          for (const [dateKey] of Object.entries(siteData.dailyVisits || {})) {
+            const visitDate = new Date(dateKey);
+            if (visitDate >= cutoffDate && visitDate.getTime() > mostRecentInPeriod) {
+              mostRecentInPeriod = visitDate.getTime();
+            }
+          }
+          lastVisit = mostRecentInPeriod;
+        }
+      }
     }
     
     if (count > 0) {
       filtered[domain] = {
         visits: count,
-        time: timeSpent
+        time: timeSpent,
+        lastVisit: lastVisit
       };
     }
   }
@@ -168,11 +193,28 @@ function updateDisplay() {
   const filteredData = filterDataByPeriod(visitData, currentPeriod);
   
   const sortedSites = Object.entries(filteredData)
-    .sort((a, b) => b[1].visits - a[1].visits);
+    .sort((a, b) => {
+      switch (currentSort) {
+        case 'visits':
+          return b[1].visits - a[1].visits;
+        case 'time':
+          return b[1].time - a[1].time;
+        case 'recent':
+          return b[1].lastVisit - a[1].lastVisit;
+        default:
+          return b[1].visits - a[1].visits;
+      }
+    });
   
   const totalSites = sortedSites.length;
   const totalVisits = sortedSites.reduce((sum, [_, data]) => sum + data.visits, 0);
   const totalTime = sortedSites.reduce((sum, [_, data]) => sum + data.time, 0);
+  
+  // Update sort dropdown to reflect current selection
+  const sortSelect = document.getElementById('sortSelect');
+  if (sortSelect) {
+    sortSelect.value = currentSort;
+  }
   
   document.getElementById('totalSites').textContent = totalSites.toLocaleString();
   document.getElementById('totalVisits').textContent = totalVisits.toLocaleString();

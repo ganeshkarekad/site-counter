@@ -156,11 +156,51 @@ body {
   border-bottom: 1px solid #a7f3d0;
 }
 
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .chart-title {
   font-size: 14px;
   font-weight: 600;
   color: #0f766e;
-  margin-bottom: 16px;
+  margin: 0;
+}
+
+.sort-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.sort-select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #374151;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-select:hover {
+  border-color: #14b8a6;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.1);
 }
 
 #visitChart {

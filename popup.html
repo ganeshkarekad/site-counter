@@ -36,7 +36,17 @@
     </div>
     
     <div class="chart-container">
-      <h2 class="chart-title">Top Sites</h2>
+      <div class="chart-header">
+        <h2 class="chart-title">Top Sites</h2>
+        <div class="sort-container">
+          <label for="sortSelect" class="sort-label">Sort by:</label>
+          <select id="sortSelect" class="sort-select">
+            <option value="visits">Most Visits</option>
+            <option value="time">Time Spent</option>
+            <option value="recent">Recent Visit</option>
+          </select>
+        </div>
+      </div>
       <canvas id="visitChart"></canvas>
     </div>
     
