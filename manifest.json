@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Site Tracker - Browse History Analytics",
+  "name": "Foculatics: Site Counter",
   "version": "1.0.0",
-  "description": "Track your website visit counts with real-time statistics and historical data visualization",
+  "description": "Track browsing habits with smart notifications and counters for site visits",
   "permissions": [
-    "history",
-    "storage",
+    "storage", 
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"

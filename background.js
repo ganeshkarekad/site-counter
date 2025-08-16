@@ -1,215 +1,400 @@
-let refreshInterval;
-let lastRefreshTime = 0;
+// Custom visit tracking system
+const visitSessions = {};
+const visitData = {};
+const activeVisits = {};
 
+// Navigation state tracking
+const tabNavigationState = {};
+const tabUrls = {};
+
+// Time tracking constants
+const MIN_VISIT_DURATION = 1000; // Minimum 1 second to count as a visit
+const IDLE_TIMEOUT = 30000; // 30 seconds of inactivity ends a visit
+
+// Initialize on install/startup
 chrome.runtime.onInstalled.addListener(() => {
-  refreshVisitData();
-  startAutoRefresh();
+  loadVisitData();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  refreshVisitData();
-  startAutoRefresh();
+  loadVisitData();
 });
 
-function startAutoRefresh() {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
+// Load existing visit data from storage
+async function loadVisitData() {
+  try {
+    const result = await chrome.storage.local.get(['customVisitData']);
+    if (result.customVisitData) {
+      Object.assign(visitData, result.customVisitData);
+    }
+  } catch (error) {
+    console.error('Error loading visit data:', error);
   }
-  refreshInterval = setInterval(() => {
-    refreshVisitData();
-  }, 60000);
 }
 
-async function refreshVisitData() {
-  const startTime = Date.now();
-  
-  if (startTime - lastRefreshTime < 5000) {
-    return;
-  }
-  
-  lastRefreshTime = startTime;
-  
+// Save visit data to storage
+async function saveVisitData() {
   try {
-    const endTime = Date.now();
-    const oneYearAgo = endTime - (365 * 24 * 60 * 60 * 1000);
+    await chrome.storage.local.set({ customVisitData: visitData });
     
-    const historyItems = await chrome.history.search({
-      text: '',
-      startTime: oneYearAgo,
-      endTime: endTime,
-      maxResults: 100000
-    });
-    
-    const visitData = {};
-    
-    for (const item of historyItems) {
-      if (!item.url || !item.visitCount) continue;
-      
-      try {
-        const url = new URL(item.url);
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
-        
-        const domain = url.hostname.replace(/^www\./, '');
-        
-        if (!visitData[domain]) {
-          visitData[domain] = {
-            count: 0,
-            lastVisit: 0,
-            dailyVisits: {}
-          };
-        }
-        
-        const visits = await chrome.history.getVisits({ url: item.url });
-        
-        for (const visit of visits) {
-          if (visit.visitTime >= oneYearAgo) {
-            const dateKey = new Date(visit.visitTime).toDateString();
-            
-            visitData[domain].count++;
-            visitData[domain].lastVisit = Math.max(visitData[domain].lastVisit, visit.visitTime);
-            
-            if (!visitData[domain].dailyVisits[dateKey]) {
-              visitData[domain].dailyVisits[dateKey] = 0;
-            }
-            visitData[domain].dailyVisits[dateKey]++;
-          }
-        }
-      } catch (e) {
-        console.error('Error processing URL:', item.url, e);
-      }
-    }
-    
-    await chrome.storage.local.set({
-      visitData: visitData,
-      lastRefresh: Date.now()
-    });
-    
+    // Notify popup if open
     chrome.runtime.sendMessage({ 
       action: 'dataRefreshed',
       timestamp: Date.now()
     }).catch(() => {});
   } catch (error) {
-    console.error('Error refreshing visit data:', error);
+    console.error('Error saving visit data:', error);
   }
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'settingsUpdated') {
-    // Settings were updated in popup, no need to do anything special here
-    // The content script will check settings when showing popups
-    sendResponse({ success: true });
-    return true;
-  } else if (request.action === 'refreshData') {
-    refreshVisitData().then(() => {
-      sendResponse({ success: true });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
+// Get domain from URL
+function getDomainFromUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.hostname.replace(/^www\./, '');
+  } catch (e) {
+    return null;
+  }
+}
+
+// Start a new visit session
+function startVisit(tabId, url, timestamp = Date.now()) {
+  const domain = getDomainFromUrl(url);
+  if (!domain) return;
+
+  // End any existing visit for this tab
+  if (activeVisits[tabId]) {
+    endVisit(tabId, timestamp);
+  }
+
+  // Initialize domain data if needed
+  if (!visitData[domain]) {
+    visitData[domain] = {
+      totalVisits: 0,
+      totalTime: 0,
+      dailyVisits: {},
+      dailyTime: {},
+      lastVisit: 0,
+      sessions: []
+    };
+  }
+
+  // Create new visit session
+  const session = {
+    domain,
+    startTime: timestamp,
+    endTime: null,
+    duration: 0,
+    isActive: true
+  };
+
+  activeVisits[tabId] = session;
+  
+  // Increment visit count for today
+  const today = new Date(timestamp).toDateString();
+  if (!visitData[domain].dailyVisits[today]) {
+    visitData[domain].dailyVisits[today] = 0;
+    visitData[domain].dailyTime[today] = 0;
+  }
+  
+  // Increment visit count (including current visit)
+  visitData[domain].dailyVisits[today]++;
+  visitData[domain].totalVisits++;
+  visitData[domain].lastVisit = timestamp;
+  
+  // Save immediately to ensure current visit is counted
+  saveVisitData();
+  
+  return session;
+}
+
+// End a visit session
+function endVisit(tabId, timestamp = Date.now()) {
+  const session = activeVisits[tabId];
+  if (!session || !session.isActive) return;
+
+  session.endTime = timestamp;
+  session.duration = timestamp - session.startTime;
+  session.isActive = false;
+
+  // Only record time if visit was longer than minimum
+  if (session.duration >= MIN_VISIT_DURATION) {
+    const domain = session.domain;
+    const today = new Date(session.startTime).toDateString();
+    
+    // Update time spent
+    visitData[domain].totalTime += session.duration;
+    visitData[domain].dailyTime[today] = (visitData[domain].dailyTime[today] || 0) + session.duration;
+    
+    // Store session details (keep only last 100 sessions per domain)
+    if (!visitData[domain].sessions) {
+      visitData[domain].sessions = [];
+    }
+    visitData[domain].sessions.push({
+      start: session.startTime,
+      end: session.endTime,
+      duration: session.duration
     });
-    return true;
-  } else if (request.action === 'getCurrentSiteData') {
-    chrome.storage.local.get(['visitData']).then(result => {
-      const visitData = result.visitData || {};
-      let domain = request.domain;
+    
+    // Keep only last 100 sessions
+    if (visitData[domain].sessions.length > 100) {
+      visitData[domain].sessions = visitData[domain].sessions.slice(-100);
+    }
+    
+    saveVisitData();
+  }
+
+  delete activeVisits[tabId];
+}
+
+// Pause a visit (tab inactive but not closed)
+function pauseVisit(tabId) {
+  const session = activeVisits[tabId];
+  if (session && session.isActive) {
+    const now = Date.now();
+    const duration = now - session.startTime;
+    
+    // Update time spent so far
+    const domain = session.domain;
+    const today = new Date(session.startTime).toDateString();
+    
+    visitData[domain].totalTime += duration;
+    visitData[domain].dailyTime[today] = (visitData[domain].dailyTime[today] || 0) + duration;
+    
+    // Mark as paused
+    session.isActive = false;
+    session.pausedAt = now;
+    
+    saveVisitData();
+  }
+}
+
+// Resume a paused visit
+function resumeVisit(tabId) {
+  const session = activeVisits[tabId];
+  if (session && !session.isActive && session.pausedAt) {
+    // Start a new timing segment
+    session.startTime = Date.now();
+    session.isActive = true;
+    delete session.pausedAt;
+  }
+}
+
+// Track tab navigation
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Track navigation start (URL change or loading)
+  if (changeInfo.url) {
+    const oldUrl = tabUrls[tabId];
+    const newUrl = changeInfo.url;
+    
+    // Check if this is a real navigation (not just hash change or same page)
+    if (oldUrl !== newUrl) {
+      const oldDomain = getDomainFromUrl(oldUrl);
+      const newDomain = getDomainFromUrl(newUrl);
       
-      if (domain) {
-        domain = domain.replace(/^www\./, '');
-        const siteData = visitData[domain];
+      // Only start new visit if domain changed or this is initial navigation
+      if (oldDomain !== newDomain || !oldDomain) {
+        tabNavigationState[tabId] = {
+          navigating: true,
+          url: newUrl,
+          startTime: Date.now()
+        };
+        tabUrls[tabId] = newUrl;
         
-        if (siteData) {
-          const today = new Date().toDateString();
-          const todayVisits = siteData.dailyVisits[today] || 0;
-          
-          sendResponse({
-            success: true,
-            data: {
-              todayVisits: todayVisits,
-              totalVisits: siteData.count,
-              lastVisit: siteData.lastVisit
-            }
-          });
-        } else {
-          sendResponse({
-            success: true,
-            data: {
-              todayVisits: 0,
-              totalVisits: 0,
-              lastVisit: null
-            }
-          });
-        }
-      } else {
-        sendResponse({ success: false, error: 'No domain provided' });
+        // Start visit immediately on navigation
+        startVisit(tabId, newUrl);
       }
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
+    }
+  }
+  
+  // Track navigation complete
+  if (changeInfo.status === 'complete' && tab.url) {
+    const navState = tabNavigationState[tabId];
+    
+    // Send popup notification if this was a real navigation
+    if (navState && navState.navigating) {
+      navState.navigating = false;
+      
+      const domain = getDomainFromUrl(tab.url);
+      if (domain) {
+        // Delay popup slightly to ensure page is ready
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tabId, {
+            action: 'showVisitPopup',
+            isNewVisit: true
+          }).catch(() => {});
+        }, 1000);
+      }
+    }
+  }
+});
+
+// Track tab activation (switching tabs)
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const { tabId, windowId } = activeInfo;
+  
+  // Pause all other visits in this window
+  const tabs = await chrome.tabs.query({ windowId });
+  tabs.forEach(tab => {
+    if (tab.id !== tabId && activeVisits[tab.id]) {
+      pauseVisit(tab.id);
+    }
+  });
+  
+  // Resume or start visit for activated tab
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.url) {
+      if (activeVisits[tabId]) {
+        resumeVisit(tabId);
+      } else {
+        startVisit(tabId, tab.url);
+      }
+    }
+  } catch (e) {
+    console.error('Error getting tab:', e);
+  }
+});
+
+// Track tab removal
+chrome.tabs.onRemoved.addListener((tabId) => {
+  endVisit(tabId);
+  delete tabUrls[tabId];
+  delete tabNavigationState[tabId];
+});
+
+// Track window focus changes
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    // All windows lost focus, pause all active visits
+    Object.keys(activeVisits).forEach(tabId => {
+      pauseVisit(parseInt(tabId));
     });
-    return true;
-  } else if (request.action === 'getVisitData') {
-    chrome.storage.local.get(['visitData', 'lastRefresh']).then(result => {
+  } else {
+    // Window gained focus, resume active tab
+    try {
+      const tabs = await chrome.tabs.query({ active: true, windowId });
+      if (tabs.length > 0) {
+        const tabId = tabs[0].id;
+        if (activeVisits[tabId]) {
+          resumeVisit(tabId);
+        }
+      }
+    } catch (e) {
+      console.error('Error handling window focus:', e);
+    }
+  }
+});
+
+// Message handling
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getCurrentSiteData') {
+    const domain = request.domain?.replace(/^www\./, '');
+    
+    if (domain && visitData[domain]) {
+      const today = new Date().toDateString();
+      const todayVisits = visitData[domain].dailyVisits[today] || 0;
+      const todayTime = visitData[domain].dailyTime[today] || 0;
+      
+      // Check if there's an active visit for this domain
+      const activeTabVisit = Object.values(activeVisits).find(v => v.domain === domain && v.isActive);
+      let currentSessionTime = 0;
+      
+      if (activeTabVisit) {
+        currentSessionTime = Date.now() - activeTabVisit.startTime;
+      }
+      
       sendResponse({
         success: true,
-        data: result.visitData || {},
-        lastRefresh: result.lastRefresh || null
+        data: {
+          todayVisits: todayVisits,
+          totalVisits: visitData[domain].totalVisits,
+          todayTime: todayTime + currentSessionTime,
+          totalTime: visitData[domain].totalTime + currentSessionTime,
+          lastVisit: visitData[domain].lastVisit,
+          isCurrentlyActive: !!activeTabVisit
+        }
+      });
+    } else {
+      sendResponse({
+        success: true,
+        data: {
+          todayVisits: 0,
+          totalVisits: 0,
+          todayTime: 0,
+          totalTime: 0,
+          lastVisit: null,
+          isCurrentlyActive: false
+        }
+      });
+    }
+    return true;
+  }
+  
+  if (request.action === 'getVisitData') {
+    // Return visit data for popup
+    chrome.storage.local.get(['customVisitData', 'settings']).then(result => {
+      sendResponse({
+        success: true,
+        data: result.customVisitData || {},
+        lastRefresh: Date.now()
       });
     }).catch(error => {
       sendResponse({ success: false, error: error.message });
     });
     return true;
-  } else if (request.action === 'clearAllData') {
-    chrome.storage.local.clear().then(() => {
+  }
+  
+  if (request.action === 'refreshData') {
+    // Save current state
+    saveVisitData().then(() => {
       sendResponse({ success: true });
-      refreshVisitData();
     }).catch(error => {
       sendResponse({ success: false, error: error.message });
     });
     return true;
   }
-});
-
-// Track the last URL and navigation state for each tab
-const tabUrls = {};
-const tabNavigationState = {};
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Only proceed for actual navigation changes
-  if (changeInfo.url || (changeInfo.status === 'loading' && tab.url)) {
-    try {
-      const url = new URL(tab.url);
-      
-      // Check if this is an actual URL change (not just status change)
-      const lastUrl = tabUrls[tabId];
-      if (lastUrl === tab.url) {
-        return;
-      }
-      
-      // Mark as navigating when URL changes or loading starts
-      if (changeInfo.url || changeInfo.status === 'loading') {
-        tabNavigationState[tabId] = true;
-        tabUrls[tabId] = tab.url;
-      }
-      
-      // Only trigger popup when navigation completes
-      if (changeInfo.status === 'complete' && tabNavigationState[tabId]) {
-        tabNavigationState[tabId] = false;
-        
-        // Only show popup for http/https pages
-        if (url.protocol === 'http:' || url.protocol === 'https:') {
-          // Add small delay to ensure page is fully loaded
-          setTimeout(() => {
-            chrome.tabs.sendMessage(tabId, {
-              action: 'showVisitPopup'
-            }).catch(() => {});
-          }, 1000);
-        }
-      }
-    } catch (e) {
-      console.error('Invalid URL:', tab.url);
-    }
+  
+  if (request.action === 'clearAllData') {
+    // Clear all custom visit data
+    Object.keys(visitData).forEach(key => delete visitData[key]);
+    Object.keys(activeVisits).forEach(key => delete activeVisits[key]);
+    
+    chrome.storage.local.remove(['customVisitData']).then(() => {
+      sendResponse({ success: true });
+    }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+  
+  if (request.action === 'settingsUpdated') {
+    sendResponse({ success: true });
+    return true;
   }
 });
 
-// Clean up stored URLs and navigation state when tabs are closed
-chrome.tabs.onRemoved.addListener((tabId) => {
-  delete tabUrls[tabId];
-  delete tabNavigationState[tabId];
-});
+// Periodic cleanup of old data (keep only last 90 days)
+setInterval(() => {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
+  const cutoffDateString = cutoffDate.toDateString();
+  
+  Object.values(visitData).forEach(siteData => {
+    // Clean up old daily data
+    Object.keys(siteData.dailyVisits || {}).forEach(dateKey => {
+      if (new Date(dateKey) < cutoffDate) {
+        delete siteData.dailyVisits[dateKey];
+        delete siteData.dailyTime[dateKey];
+      }
+    });
+    
+    // Clean up old sessions
+    if (siteData.sessions) {
+      siteData.sessions = siteData.sessions.filter(s => s.start > cutoffDate.getTime());
+    }
+  });
+  
+  saveVisitData();
+}, 3600000); // Run every hour

@@ -36,6 +36,27 @@ function setupMessageListener() {
   });
 }
 
+// Format time duration
+function formatDuration(milliseconds) {
+  const seconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return `${days}d ${remainingHours}h`;
+  } else if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  } else if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
+
 async function loadVisitData() {
   chrome.runtime.sendMessage({ action: 'getVisitData' }, response => {
     if (response && response.success) {
@@ -89,7 +110,7 @@ function updateLastRefreshTime(timestamp) {
       element.textContent = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     }
   } else {
-    element.textContent = 'Never';
+    element.textContent = 'Live tracking';
   }
 }
 
@@ -100,9 +121,11 @@ function filterDataByPeriod(data, period) {
   
   for (const [domain, siteData] of Object.entries(data)) {
     let count = 0;
+    let timeSpent = 0;
     
     if (period === 'all') {
-      count = siteData.count;
+      count = siteData.totalVisits || 0;
+      timeSpent = siteData.totalTime || 0;
     } else {
       const cutoffDate = new Date(today);
       if (period === 'today') {
@@ -113,16 +136,28 @@ function filterDataByPeriod(data, period) {
         cutoffDate.setDate(cutoffDate.getDate() - 29);
       }
       
-      for (const [dateKey, visits] of Object.entries(siteData.dailyVisits)) {
+      // Sum visits for the period
+      for (const [dateKey, visits] of Object.entries(siteData.dailyVisits || {})) {
         const visitDate = new Date(dateKey);
         if (visitDate >= cutoffDate) {
           count += visits;
         }
       }
+      
+      // Sum time for the period
+      for (const [dateKey, time] of Object.entries(siteData.dailyTime || {})) {
+        const visitDate = new Date(dateKey);
+        if (visitDate >= cutoffDate) {
+          timeSpent += time;
+        }
+      }
     }
     
     if (count > 0) {
-      filtered[domain] = count;
+      filtered[domain] = {
+        visits: count,
+        time: timeSpent
+      };
     }
   }
   
@@ -133,13 +168,29 @@ function updateDisplay() {
   const filteredData = filterDataByPeriod(visitData, currentPeriod);
   
   const sortedSites = Object.entries(filteredData)
-    .sort((a, b) => b[1] - a[1]);
+    .sort((a, b) => b[1].visits - a[1].visits);
   
   const totalSites = sortedSites.length;
-  const totalVisits = sortedSites.reduce((sum, [_, count]) => sum + count, 0);
+  const totalVisits = sortedSites.reduce((sum, [_, data]) => sum + data.visits, 0);
+  const totalTime = sortedSites.reduce((sum, [_, data]) => sum + data.time, 0);
   
   document.getElementById('totalSites').textContent = totalSites.toLocaleString();
   document.getElementById('totalVisits').textContent = totalVisits.toLocaleString();
+  
+  // Add total time display
+  const statsContainer = document.querySelector('.stats-grid');
+  let timeStatElement = document.getElementById('totalTimeContainer');
+  if (!timeStatElement) {
+    timeStatElement = document.createElement('div');
+    timeStatElement.id = 'totalTimeContainer';
+    timeStatElement.className = 'stat-card';
+    timeStatElement.innerHTML = `
+      <div class="stat-value" id="totalTime">0s</div>
+      <div class="stat-label">Total Time</div>
+    `;
+    statsContainer.appendChild(timeStatElement);
+  }
+  document.getElementById('totalTime').textContent = formatDuration(totalTime);
   
   updateChart(sortedSites);
   updateTopSitesList(sortedSites.slice(0, 10));
@@ -149,12 +200,12 @@ function updateChart(sortedSites) {
   const ctx = document.getElementById('visitChart').getContext('2d');
   
   const top5 = sortedSites.slice(0, 5);
-  const otherCount = sortedSites.slice(5).reduce((sum, [_, count]) => sum + count, 0);
+  const otherCount = sortedSites.slice(5).reduce((sum, [_, data]) => sum + data.visits, 0);
   
   const labels = top5.map(([domain, _]) => {
     return domain.length > 20 ? domain.substring(0, 17) + '...' : domain;
   });
-  const data = top5.map(([_, count]) => count);
+  const data = top5.map(([_, siteData]) => siteData.visits);
   
   if (otherCount > 0) {
     labels.push('Other');
@@ -162,12 +213,12 @@ function updateChart(sortedSites) {
   }
   
   const colors = [
-    '#3b82f6',
-    '#10b981', 
-    '#f59e0b',
-    '#ef4444',
-    '#8b5cf6',
-    '#6b7280'
+    '#14b8a6',
+    '#0d9488',
+    '#22d3ee',
+    '#06b6d4',
+    '#a7f3d0',
+    '#5eead4'
   ];
   
   if (chartInstance) {
@@ -232,7 +283,18 @@ function updateChart(sortedSites) {
               const value = context.parsed || 0;
               const total = context.dataset.data.reduce((a, b) => a + b, 0);
               const percentage = ((value / total) * 100).toFixed(1);
-              return `${label}: ${value.toLocaleString()} visits (${percentage}%)`;
+              
+              // Get the time data for this site
+              const siteIndex = context.dataIndex;
+              let timeText = '';
+              if (siteIndex < sortedSites.length) {
+                const siteData = sortedSites[siteIndex][1];
+                if (siteData && siteData.time) {
+                  timeText = ` | Time: ${formatDuration(siteData.time)}`;
+                }
+              }
+              
+              return `${label}: ${value.toLocaleString()} visits (${percentage}%)${timeText}`;
             }
           }
         }
@@ -255,13 +317,19 @@ function updateTopSitesList(topSites) {
     return;
   }
   
-  container.innerHTML = topSites.map(([domain, count], index) => `
-    <div class="site-item">
-      <span class="site-rank">${index + 1}</span>
-      <span class="site-domain" title="${domain}">${domain}</span>
-      <span class="site-count">${count.toLocaleString()}</span>
-    </div>
-  `).join('');
+  container.innerHTML = topSites.map(([domain, siteData], index) => {
+    const timeText = siteData.time ? formatDuration(siteData.time) : '0s';
+    return `
+      <div class="site-item">
+        <span class="site-rank">${index + 1}</span>
+        <span class="site-domain" title="${domain}">${domain}</span>
+        <div class="site-stats">
+          <span class="site-count">${siteData.visits.toLocaleString()} visits</span>
+          <span class="site-time">${timeText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 async function loadSettings() {

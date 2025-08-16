@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Tracker Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f9fafb;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    h1 {
+      color: #0f766e;
+      margin-bottom: 10px;
+    }
+    
+    p {
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f0fdfa;
+      border-radius: 8px;
+      border: 1px solid #a7f3d0;
+    }
+    
+    .section h2 {
+      color: #14b8a6;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    .test-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    
+    .test-link {
+      padding: 8px 16px;
+      background: #14b8a6;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    
+    .test-link:hover {
+      background: #0f766e;
+      transform: translateY(-2px);
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: #14b8a6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      background: #0f766e;
+    }
+    
+    #ajax-result {
+      margin-top: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      min-height: 50px;
+    }
+    
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    
+    .info-box strong {
+      color: #1e40af;
+    }
+    
+    ul {
+      margin: 10px 0;
+      padding-left: 25px;
+      color: #4b5563;
+    }
+    
+    li {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Site Tracker Extension Test Page</h1>
+    <p>Use this page to test the Site Tracker Chrome Extension functionality.</p>
+    
+    <div class="section">
+      <h2>📊 What This Extension Tracks</h2>
+      <ul>
+        <li><strong>Visit Count:</strong> Number of times you navigate to a domain (including current visit)</li>
+        <li><strong>Time Spent:</strong> Total time spent on each domain (automatically pauses when tab is inactive)</li>
+        <li><strong>Daily/Weekly/Monthly Stats:</strong> Filter visits by time period in the popup</li>
+        <li><strong>Smart Navigation Detection:</strong> Only counts real user navigation, not background requests</li>
+      </ul>
+    </div>
+    
+    <div class="section">
+      <h2>🧪 Test Navigation</h2>
+      <p>Click these links to test visit counting. Each navigation to a different domain should be counted as a new visit:</p>
+      <div class="test-links">
+        <a href="https://www.google.com" class="test-link" target="_blank">Google</a>
+        <a href="https://www.github.com" class="test-link" target="_blank">GitHub</a>
+        <a href="https://www.stackoverflow.com" class="test-link" target="_blank">Stack Overflow</a>
+        <a href="https://www.youtube.com" class="test-link" target="_blank">YouTube</a>
+        <a href="https://www.wikipedia.org" class="test-link" target="_blank">Wikipedia</a>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>🔄 Test AJAX/XHR (Should NOT Count as Visits)</h2>
+      <p>These background requests should not trigger visit counts or popups:</p>
+      <button onclick="testAjax()">Make AJAX Request</button>
+      <button onclick="testFetch()">Make Fetch Request</button>
+      <div id="ajax-result">Click a button to test background requests</div>
+    </div>
+    
+    <div class="section">
+      <h2>⏱️ Test Time Tracking</h2>
+      <p>Keep this tab open to test time tracking. The extension should:</p>
+      <ul>
+        <li>Track time while this tab is active and visible</li>
+        <li>Pause tracking when you switch to another tab</li>
+        <li>Resume tracking when you return to this tab</li>
+        <li>Stop tracking when you close this tab</li>
+      </ul>
+      <div class="info-box">
+        <strong>Tip:</strong> Open the extension popup to see live time updates while browsing!
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>✅ Expected Behavior</h2>
+      <ul>
+        <li><strong>First Visit:</strong> Popup shows "1 visit today (including current)"</li>
+        <li><strong>Revisit:</strong> Popup shows increased count only after 5-minute cooldown</li>
+        <li><strong>Time Tracking:</strong> Live timer updates every second while tab is active</li>
+        <li><strong>Tab Switching:</strong> Time pauses when tab is inactive</li>
+        <li><strong>Background Requests:</strong> AJAX/Fetch don't trigger popups or visits</li>
+        <li><strong>Same-Site Navigation:</strong> Navigating within same domain doesn't count as new visit</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    function testAjax() {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts/1', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          document.getElementById('ajax-result').innerHTML = 
+            '<strong>AJAX Success!</strong><br>Fetched post: "' + data.title + '"<br>' +
+            '<em style="color: #059669;">✓ This should NOT have triggered a visit count</em>';
+        }
+      };
+      xhr.send();
+    }
+    
+    function testFetch() {
+      fetch('https://jsonplaceholder.typicode.com/users/1')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('ajax-result').innerHTML = 
+            '<strong>Fetch Success!</strong><br>Fetched user: ' + data.name + '<br>' +
+            '<em style="color: #059669;">✓ This should NOT have triggered a visit count</em>';
+        })
+        .catch(error => {
+          document.getElementById('ajax-result').innerHTML = 
+            '<strong>Error:</strong> ' + error.message;
+        });
+    }
+    
+    // Log page visibility changes for testing
+    document.addEventListener('visibilitychange', () => {
+      console.log('Page visibility changed:', document.hidden ? 'Hidden' : 'Visible');
+    });
+  </script>
+</body>
+</html>
