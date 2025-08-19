@@ -2,7 +2,7 @@
 class DomainDB {
   constructor() {
     this.dbName = 'FoculaticsDB';
-    this.version = 1;
+    this.version = 2; // Increment version for schema change
     this.db = null;
   }
 
@@ -28,6 +28,14 @@ class DomainDB {
           domainsStore.createIndex('lastVisit', 'lastVisit', { unique: false });
           domainsStore.createIndex('visitCount', 'visitCount', { unique: false });
         }
+        
+        // Create visits table to track individual visits
+        if (!db.objectStoreNames.contains('visits')) {
+          const visitsStore = db.createObjectStore('visits', { keyPath: 'id', autoIncrement: true });
+          visitsStore.createIndex('domain', 'domain', { unique: false });
+          visitsStore.createIndex('timestamp', 'timestamp', { unique: false });
+          visitsStore.createIndex('domain_timestamp', ['domain', 'timestamp'], { unique: false });
+        }
       };
     });
   }
@@ -36,11 +44,12 @@ class DomainDB {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['domains'], 'readwrite');
-      const store = transaction.objectStore('domains');
+      const transaction = this.db.transaction(['domains', 'visits'], 'readwrite');
+      const domainsStore = transaction.objectStore('domains');
+      const visitsStore = transaction.objectStore('visits');
       
       // First, try to get existing domain
-      const getRequest = store.get(domain);
+      const getRequest = domainsStore.get(domain);
       
       getRequest.onsuccess = () => {
         const existingData = getRequest.result;
@@ -58,10 +67,26 @@ class DomainDB {
           visitCount: 1
         };
         
-        const putRequest = store.put(domainData);
+        // Save domain data
+        const putRequest = domainsStore.put(domainData);
         
         putRequest.onsuccess = () => {
-          resolve(domainData);
+          // Also save individual visit record
+          const visitData = {
+            domain: domain,
+            timestamp: now
+          };
+          
+          const visitRequest = visitsStore.add(visitData);
+          
+          visitRequest.onsuccess = () => {
+            resolve(domainData);
+          };
+          
+          visitRequest.onerror = () => {
+            // Still resolve even if visit record fails
+            resolve(domainData);
+          };
         };
         
         putRequest.onerror = () => {
@@ -108,47 +133,114 @@ class DomainDB {
   }
 
   async getDomainsForPeriod(period) {
-    const domains = await this.getAllDomains();
-    const now = new Date();
+    if (!this.db) await this.init();
     
-    const filterByDate = (date) => {
-      const visitDate = new Date(date);
-      
-      switch(period) {
-        case 'today':
-          // Check if visit was today (same date)
-          return visitDate.toDateString() === now.toDateString();
-        case 'week':
-          // Check if visit was within the last 7 days
-          const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return visitDate >= oneWeekAgo;
-        case 'month':
-          // Check if visit was within the last 30 days
-          const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          return visitDate >= oneMonthAgo;
-        case 'all':
-        default:
-          return true;
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Get all domains first
+        const domains = await this.getAllDomains();
+        const now = new Date();
+        
+        // Calculate date boundaries
+        let startDate;
+        switch(period) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'all':
+          default:
+            startDate = new Date(0); // Beginning of time
+            break;
+        }
+        
+        // Get visits for the period
+        const transaction = this.db.transaction(['visits'], 'readonly');
+        const visitsStore = transaction.objectStore('visits');
+        const visitsIndex = visitsStore.index('timestamp');
+        
+        const visitCounts = {};
+        const lastVisits = {};
+        
+        const range = IDBKeyRange.lowerBound(startDate.toISOString());
+        const request = visitsIndex.openCursor(range);
+        
+        request.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const visit = cursor.value;
+            // Count visits per domain for this period
+            visitCounts[visit.domain] = (visitCounts[visit.domain] || 0) + 1;
+            // Track last visit time in this period
+            if (!lastVisits[visit.domain] || visit.timestamp > lastVisits[visit.domain]) {
+              lastVisits[visit.domain] = visit.timestamp;
+            }
+            cursor.continue();
+          } else {
+            // Process complete - build result with period-specific counts
+            const result = domains
+              .filter(domain => visitCounts[domain.domain] > 0)
+              .map(domain => ({
+                ...domain,
+                visitCount: visitCounts[domain.domain] || 0,
+                lastVisit: lastVisits[domain.domain] || domain.lastVisit,
+                periodVisitCount: visitCounts[domain.domain] || 0 // Add period-specific count
+              }));
+            
+            resolve(result);
+          }
+        };
+        
+        request.onerror = () => {
+          reject(new Error('Failed to fetch visits'));
+        };
+      } catch (error) {
+        reject(error);
       }
-    };
-    
-    return domains.filter(domain => filterByDate(domain.lastVisit));
+    });
   }
 
   async clearAllDomains() {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['domains'], 'readwrite');
-      const store = transaction.objectStore('domains');
-      const request = store.clear();
+      const transaction = this.db.transaction(['domains', 'visits'], 'readwrite');
+      const domainsStore = transaction.objectStore('domains');
+      const visitsStore = transaction.objectStore('visits');
       
-      request.onsuccess = () => {
-        resolve();
+      const domainsClearRequest = domainsStore.clear();
+      const visitsClearRequest = visitsStore.clear();
+      
+      let clearedDomains = false;
+      let clearedVisits = false;
+      
+      const checkComplete = () => {
+        if (clearedDomains && clearedVisits) {
+          resolve();
+        }
       };
       
-      request.onerror = () => {
+      domainsClearRequest.onsuccess = () => {
+        clearedDomains = true;
+        checkComplete();
+      };
+      
+      visitsClearRequest.onsuccess = () => {
+        clearedVisits = true;
+        checkComplete();
+      };
+      
+      domainsClearRequest.onerror = () => {
         reject(new Error('Failed to clear domains'));
+      };
+      
+      visitsClearRequest.onerror = () => {
+        reject(new Error('Failed to clear visits'));
       };
     });
   }
@@ -204,24 +296,11 @@ async function updateBadge(tabId = null) {
     const url = new URL(tab.url);
     const domain = url.hostname;
     
-    // Get today's visit count for this domain
-    // Note: The current DB structure only tracks total visits, not daily visits
-    // For now, we'll show total visits but this could be enhanced to track daily visits
-    const domains = await domainDB.getAllDomains();
-    const domainData = domains.find(d => d.domain === domain);
+    // Get today's visit count for this domain using the new period-based method
+    const todayDomains = await domainDB.getDomainsForPeriod('today');
+    const domainData = todayDomains.find(d => d.domain === domain);
     
-    let visitCount = 0;
-    if (domainData) {
-      // Check if the domain was visited today
-      const today = new Date();
-      const lastVisit = new Date(domainData.lastVisit);
-      const daysDiff = (today - lastVisit) / (1000 * 60 * 60 * 24);
-      
-      if (daysDiff < 1) {
-        // If visited today, show total count (we'll enhance this later for daily counts)
-        visitCount = domainData.visitCount;
-      }
-    }
+    let visitCount = domainData ? domainData.periodVisitCount : 0;
     
     console.log(`Badge update for ${domain}: ${visitCount} visits today`);
     
@@ -277,8 +356,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Fetch domains for specified period
     domainDB.getDomainsForPeriod(request.period || 'all')
       .then(domains => {
-        // Sort by visit count by default
-        domains.sort((a, b) => b.visitCount - a.visitCount);
+        // Sort based on request parameter or default to lastVisit
+        const sortBy = request.sortBy || 'lastVisit';
+        if (sortBy === 'visitCount') {
+          domains.sort((a, b) => b.visitCount - a.visitCount);
+        } else if (sortBy === 'lastVisit') {
+          domains.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+        }
         sendResponse({ success: true, domains: domains });
       })
       .catch(error => {

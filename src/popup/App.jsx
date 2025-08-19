@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 function App() {
   const [activeTab, setActiveTab] = useState("today");
   const [indicatorStyle, setIndicatorStyle] = useState({});
+  const [sortIndicatorStyle, setSortIndicatorStyle] = useState({});
   const [domains, setDomains] = useState([]);
   const [displayedDomains, setDisplayedDomains] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -11,11 +12,13 @@ function App() {
   const [popupEnabled, setPopupEnabled] = useState(true);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [sortBy, setSortBy] = useState("lastVisit"); // Default to latest visit
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     right: 0,
   });
   const tabRefs = useRef({});
+  const sortRefs = useRef({});
   const settingsRef = useRef(null);
   const settingsButtonRef = useRef(null);
 
@@ -24,8 +27,12 @@ function App() {
 
   useEffect(() => {
     updateIndicator(activeTab);
-    fetchDomains(activeTab);
-  }, [activeTab]);
+    fetchDomains(activeTab, sortBy);
+  }, [activeTab, sortBy]);
+
+  useEffect(() => {
+    updateSortIndicator(sortBy);
+  }, [sortBy]);
 
   useEffect(() => {
     // Load settings from chrome storage
@@ -37,6 +44,11 @@ function App() {
         setTrackingEnabled(result.trackingEnabled);
       }
     });
+    
+    // Initialize sort indicator position after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      updateSortIndicator(sortBy);
+    }, 100);
   }, []);
 
   useEffect(() => {
@@ -75,7 +87,21 @@ function App() {
     }
   };
 
-  const fetchDomains = async (period) => {
+  const updateSortIndicator = (sortType) => {
+    const activeElement = sortRefs.current[sortType];
+    if (activeElement) {
+      const { offsetLeft, offsetWidth, offsetHeight } = activeElement;
+      setSortIndicatorStyle({
+        left: `${offsetLeft}px`,
+        width: `${offsetWidth}px`,
+        height: `${offsetHeight}px`,
+        top: "50%",
+        transform: "translateY(-50%)",
+      });
+    }
+  };
+
+  const fetchDomains = async (period, sortType = "lastVisit") => {
     setLoading(true);
     try {
       // Map the tab names to period values
@@ -90,7 +116,7 @@ function App() {
 
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage(
-          { action: "getDomains", period: mappedPeriod },
+          { action: "getDomains", period: mappedPeriod, sortBy: sortType },
           (response) => resolve(response),
         );
       });
@@ -408,7 +434,36 @@ function App() {
         </li>
       </ul>
 
-      <div className="domains-section mt-3">
+      <div className="sorting-controls mt-3 mb-2">
+        <div className="sort-buttons-group" role="group">
+          <div className="sort-indicator" style={sortIndicatorStyle}></div>
+          <button
+            ref={(el) => (sortRefs.current["lastVisit"] = el)}
+            type="button"
+            className={`sort-btn ${sortBy === 'lastVisit' ? 'active' : ''}`}
+            onClick={() => setSortBy('lastVisit')}
+          >
+            <svg width="14" height="14" fill="currentColor" className="me-1" viewBox="0 0 16 16">
+              <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+            </svg>
+            Latest Visit
+          </button>
+          <button
+            ref={(el) => (sortRefs.current["visitCount"] = el)}
+            type="button"
+            className={`sort-btn ${sortBy === 'visitCount' ? 'active' : ''}`}
+            onClick={() => setSortBy('visitCount')}
+          >
+            <svg width="14" height="14" fill="currentColor" className="me-1" viewBox="0 0 16 16">
+              <path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+            </svg>
+            Most Visits
+          </button>
+        </div>
+      </div>
+
+      <div className="domains-section">
         {loading ? (
           <div className="text-center py-4">
             <div

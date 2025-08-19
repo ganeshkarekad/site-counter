@@ -62,24 +62,25 @@ function displayVisitPopup(visitCount, domain) {
       transform: translateY(20px) scale(0.9);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.2);
-    " onmouseover="this.style.transform='translateY(-6px) scale(1.02)'; this.style.boxShadow='0 16px 50px rgba(32, 201, 151, 0.35), 0 8px 24px rgba(0, 0, 0, 0.15)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 12px 40px rgba(32, 201, 151, 0.25), 0 4px 16px rgba(0, 0, 0, 0.1)'"
-      <div style="text-align: center;">
-        <div style="
-          font-size: 28px; 
-          font-weight: 800;
-          margin-bottom: 6px;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          letter-spacing: -0.5px;
-        ">${visitCount}</div>
-        <div style="
-          font-size: 13px; 
-          opacity: 0.95;
-          line-height: 1.2;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        ">visits today</div>
-      </div>
+      text-align: center;
+    " onmouseover="this.style.transform='translateY(-6px) scale(1.02)'; this.style.boxShadow='0 16px 50px rgba(32, 201, 151, 0.35), 0 8px 24px rgba(0, 0, 0, 0.15)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 12px 40px rgba(32, 201, 151, 0.25), 0 4px 16px rgba(0, 0, 0, 0.1)'">
+      <div style="
+        font-size: 28px; 
+        font-weight: 800;
+        margin-bottom: 6px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        letter-spacing: -0.5px;
+        text-align: center;
+      ">${visitCount}</div>
+      <div style="
+        font-size: 13px; 
+        opacity: 0.95;
+        line-height: 1.2;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        text-align: center;
+      ">visits today</div>
     </div>
   `;
 
