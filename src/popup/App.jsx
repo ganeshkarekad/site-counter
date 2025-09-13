@@ -11,6 +11,9 @@ function App() {
   const [showMore, setShowMore] = useState(false);
   const [popupEnabled, setPopupEnabled] = useState(true);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
+  const [quotaEnabled, setQuotaEnabled] = useState(true);
+  const [hardBlockEnabled, setHardBlockEnabled] = useState(false);
+  const [siteQuotas, setSiteQuotas] = useState({});
   const [showSettings, setShowSettings] = useState(false);
   const [sortBy, setSortBy] = useState("lastVisit"); // Default to latest visit
   const [dropdownPosition, setDropdownPosition] = useState({
@@ -36,12 +39,21 @@ function App() {
 
   useEffect(() => {
     // Load settings from chrome storage
-    chrome.storage.local.get(["popupEnabled", "trackingEnabled"], (result) => {
+    chrome.storage.local.get(["popupEnabled", "trackingEnabled", "quotaEnabled", "hardBlockEnabled", "siteQuotas"], (result) => {
       if (result.popupEnabled !== undefined) {
         setPopupEnabled(result.popupEnabled);
       }
       if (result.trackingEnabled !== undefined) {
         setTrackingEnabled(result.trackingEnabled);
+      }
+      if (result.quotaEnabled !== undefined) {
+        setQuotaEnabled(result.quotaEnabled);
+      }
+      if (result.hardBlockEnabled !== undefined) {
+        setHardBlockEnabled(result.hardBlockEnabled);
+      }
+      if (result.siteQuotas !== undefined) {
+        setSiteQuotas(result.siteQuotas || {});
       }
     });
     
@@ -200,6 +212,32 @@ function App() {
     });
   };
 
+  const handleToggleQuota = (e) => {
+    const newValue = e.target.checked;
+    setQuotaEnabled(newValue);
+    chrome.storage.local.set({ quotaEnabled: newValue });
+  };
+
+  const handleToggleHardBlock = (e) => {
+    const newValue = e.target.checked;
+    setHardBlockEnabled(newValue);
+    chrome.storage.local.set({ hardBlockEnabled: newValue });
+  };
+
+  const configureQuota = (domain) => {
+    const current = siteQuotas[domain] ?? 0;
+    const input = window.prompt(
+      `Set max visits per day for ${domain} (0 = no limit):`,
+      String(current)
+    );
+    if (input === null) return; // cancelled
+    let value = parseInt(input, 10);
+    if (isNaN(value) || value < 0) value = 0;
+    const updated = { ...siteQuotas, [domain]: value };
+    setSiteQuotas(updated);
+    chrome.storage.local.set({ siteQuotas: updated });
+  };
+
   const handleClearData = () => {
     if (
       window.confirm(
@@ -265,6 +303,38 @@ function App() {
               id="popupToggle"
               checked={popupEnabled}
               onChange={handleTogglePopup}
+            />
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-content">
+            <div className="fw-medium">Daily Site Limits</div>
+            <small className="text-muted">Soft-block when daily quota exceeded</small>
+          </div>
+          <div className="form-check form-switch">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="quotaToggle"
+              checked={quotaEnabled}
+              onChange={handleToggleQuota}
+            />
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-content">
+            <div className="fw-medium">Hard Block</div>
+            <small className="text-muted">Cover the site when limit exceeds</small>
+          </div>
+          <div className="form-check form-switch">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="hardBlockToggle"
+              checked={hardBlockEnabled}
+              onChange={handleToggleHardBlock}
             />
           </div>
         </div>
@@ -476,22 +546,56 @@ function App() {
         ) : displayedDomains.length > 0 ? (
           <>
             <div className="list-group">
-              {displayedDomains.map((domain, index) => (
-                <div key={domain.domain} className="list-group-item">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div className="flex-grow-1">
-                      <h6 className="mb-1">{domain.domain}</h6>
-                      <small className="text-muted">
-                        Visits: {domain.visitCount} • Last:{" "}
-                        {formatDate(domain.lastVisit)}
-                      </small>
+              {displayedDomains.map((domain, index) => {
+                const quota = siteQuotas[domain.domain] || 0;
+                const todayCount = domain.visitCount || 0;
+                const remaining = quota > 0 ? Math.max(0, quota - todayCount) : 0;
+                const percentRemaining = quota > 0 ? Math.max(0, Math.min(100, Math.round(((quota - todayCount) / quota) * 100))) : 0;
+                const showProgress = quotaEnabled && quota > 0 && activeTab === 'today';
+                return (
+                  <div key={domain.domain} className="list-group-item">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="flex-grow-1">
+                        <h6 className="mb-1">{domain.domain}</h6>
+                        <small className="text-muted">
+                          Visits: {todayCount} • Last: {formatDate(domain.lastVisit)}
+                          {quota > 0 ? ` • Max/day: ${quota}` : ""}
+                        </small>
+                      </div>
+                      <div className="d-flex align-items-center">
+                        <span className="badge bg-secondary">
+                          {todayCount}
+                        </span>
+                        <button
+                          className="btn btn-outline-secondary btn-sm ms-2"
+                          title="Set daily max visits"
+                          onClick={() => configureQuota(domain.domain)}
+                        >
+                          Set limit
+                        </button>
+                      </div>
                     </div>
-                    <span className="badge bg-secondary">
-                      {domain.visitCount}
-                    </span>
+                    {showProgress && (
+                      <div className="mt-2">
+                        <div className="d-flex justify-content-between align-items-center mb-1 small text-muted">
+                          <span>{remaining} remaining</span>
+                          <span>{todayCount}/{quota}</span>
+                        </div>
+                        <div className="progress" style={{ height: '6px' }}>
+                          <div
+                            className={`progress-bar ${percentRemaining <= 10 ? 'bg-danger' : 'bg-success'}`}
+                            role="progressbar"
+                            style={{ width: `${percentRemaining}%` }}
+                            aria-valuenow={percentRemaining}
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          ></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {showMore && (
               <div className="text-center mt-3">

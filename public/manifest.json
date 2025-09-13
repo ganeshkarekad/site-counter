@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Foculatics: Site Tracker",
-  "version": "1.0.0",
+  "version": "2.0",
   "description": "Track your daily browsing habits and analyze your online behavior to improve your productivity and well-being.",
   "action": {
     "default_popup": "popup.html",
@@ -25,5 +25,11 @@
       "js": ["content.js"]
     }
   ],
-  "permissions": ["storage", "activeTab", "tabs", "webNavigation"]
+  "permissions": ["storage", "tabs", "webNavigation"],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon32.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

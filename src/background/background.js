@@ -251,7 +251,7 @@ let trackingEnabled = true;
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
-  chrome.storage.local.set({ installed: true, trackingEnabled: true });
+  chrome.storage.local.set({ installed: true, trackingEnabled: true, quotaEnabled: true, hardBlockEnabled: false, siteQuotas: {} });
   // Initialize database
   domainDB.init();
 });
@@ -422,6 +422,39 @@ chrome.webNavigation.onCommitted.addListener((details) => {
               console.log('User navigation tracked:', result);
               // Update badge after tracking new visit
               updateBadge(details.tabId);
+
+              // After tracking, check daily quota (soft-block)
+              try {
+                chrome.storage.local.get(['quotaEnabled', 'hardBlockEnabled', 'siteQuotas'], async (store) => {
+                  const quotaEnabled = store.quotaEnabled !== false; // default true
+                  const hardBlockEnabled = store.hardBlockEnabled === true; // default false
+                  const siteQuotas = store.siteQuotas || {};
+                  const domain = url.hostname;
+                  const maxPerDay = parseInt(siteQuotas[domain], 10) || 0;
+
+                  if (!quotaEnabled || !maxPerDay || maxPerDay <= 0) {
+                    return;
+                  }
+
+                  try {
+                    const todayDomains = await domainDB.getDomainsForPeriod('today');
+                    const domainData = todayDomains.find(d => d.domain === domain);
+                    const todayCount = domainData ? (domainData.periodVisitCount || domainData.visitCount || 0) : 0;
+
+                    if (todayCount > maxPerDay) {
+                      const msg = `Daily limit exceeded for ${domain}. (${todayCount}/${maxPerDay})`;
+                      const action = hardBlockEnabled ? 'hardBlock' : 'quotaExceeded';
+                      chrome.tabs.sendMessage(details.tabId, { action, message: msg, domain, todayCount, maxPerDay }, () => {
+                        const _ = chrome.runtime && chrome.runtime.lastError; // ignore
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Failed to check quota:', err);
+                  }
+                });
+              } catch (e) {
+                console.error('Error scheduling quota check:', e);
+              }
             })
             .catch(error => console.error('Failed to track navigation:', error));
         }
